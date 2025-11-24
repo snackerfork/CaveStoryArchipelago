@@ -1,29 +1,48 @@
-from typing import Any, Mapping, ClassVar
-from BaseClasses import CollectionState, Region, Tutorial, Item
-from settings import Group, FolderPath
+from typing import Any, ClassVar, Mapping
+
+from BaseClasses import CollectionState, Item, Region, Tutorial
+from settings import FolderPath, Group
 from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, Type, components, icon_paths, launch_subprocess
+
+from .Items import ALL_ITEMS, FILLER_ITEMS, CaveStoryItem
+from .Locations import ALL_LOCATIONS, START_LOCATIONS, CaveStoryLocation
 from .Options import CaveStoryOptions
-from .Items import CaveStoryItem, ALL_ITEMS, FILLER_ITEMS
-from .Locations import CaveStoryLocation, ALL_LOCATIONS
 from .RegionsRules import REGIONS, RegionData, RuleData, trivial
 
 base_id = 0xD00_000
 
+
 def launch_client():
     from .CaveStoryClient import launch
+
     launch_subprocess(launch, name="CaveStoryClient")
 
-components.append(Component(
-    display_name="Cave Story Client",
-    script_name="CaveStoryClient",
-    func=launch_client,
-    component_type=Type.CLIENT,
-    description="Launches Cave Story and connects to a multiworld.",
-    icon="Cave Story",
-))
+
+def map_page_index(data: Any) -> int:
+    if type(data) == int:
+        return data
+    return 0
+
+
+def interpret_slot_data(self, slot_data: dict[str, Any]) -> None:
+    if "start" in slot_data:
+        self.origin_region_name = START_LOCATIONS[slot_data["start"]]
+
+
+components.append(
+    Component(
+        display_name="Cave Story Client",
+        script_name="CaveStoryClient",
+        func=launch_client,
+        component_type=Type.CLIENT,
+        description="Launches Cave Story and connects to a multiworld.",
+        icon="Cave Story",
+    )
+)
 
 icon_paths["Cave Story"] = f"ap:{__name__}/assets/icon.png"
+
 
 class CaveStorySettings(Group):
     class GameDir(FolderPath):
@@ -31,6 +50,7 @@ class CaveStorySettings(Group):
 
     game_dir: GameDir = GameDir("cave-story-randomizer")
     ignore_process: bool = False
+
 
 class CaveStoryWeb(WebWorld):
     tutorials = [
@@ -62,13 +82,20 @@ class CaveStoryWorld(World):
     settings_key = "cave_story_settings"
     settings: ClassVar[CaveStorySettings]
     topology_present = True
-    item_name_to_id = {
-        name : data.item_id for name, data in ALL_ITEMS.items()}
+    item_name_to_id = {name: data.item_id for name, data in ALL_ITEMS.items()}
     location_name_to_id = ALL_LOCATIONS
     data_version = 0
     # required_client_version = (0, 4, 1)
     # required_server_version = (0, 4, 1)
     web = CaveStoryWeb()
+    tracker_world: ClassVar = {
+        "map_page_folder": "tracker",
+        "map_page_maps": "maps/maps.json",
+        "map_page_locations": "locations/locations.json",
+        "map_page_setting_key": "cavestory_currentlevel_{team}_{player}",
+        "map_page_index": map_page_index,
+    }
+    ut_can_gen_without_yaml = True
 
     def generate_early(self) -> None:
         # read player settings to world instance
@@ -76,30 +103,28 @@ class CaveStoryWorld(World):
         # self.dificulty = self.multiworld.dificulty[self.player].value
 
     def create_regions(self) -> None:
-        if self.options.starting_location == 0:
-            starting_region = RegionData("Menu",[RuleData("Start Point - Door to First Cave", trivial)],[])
-        elif self.options.starting_location == 1:
-            starting_region = RegionData("Menu",[RuleData("Arthur's House - Main Teleporter", trivial)],[])
-        else:
-            starting_region = RegionData("Menu",[RuleData("Camp - Door to Labyrinth W (Lower)", trivial)],[])
-        for region_data in [starting_region,*REGIONS]:
+        try:
+            starting_region_name = START_LOCATIONS[self.options.starting_location]
+        except KeyError:
+            starting_region_name = START_LOCATIONS[1]  # Arthur's House
+        starting_region = RegionData("Menu", [RuleData(starting_region_name, trivial)], [])
+        for region_data in [starting_region, *REGIONS]:
             region = Region(region_data.name, self.player, self.multiworld)
             self.multiworld.regions.append(region)
-        for region_data in [starting_region,*REGIONS]:
+        for region_data in [starting_region, *REGIONS]:
             region = self.multiworld.get_region(region_data.name, self.player)
             for exit_data in region_data.exits:
                 exit_ = region.create_exit(f"{region.name} -> {exit_data.name}")
-                exit_.access_rule = lambda state, player=self.player, fn=exit_data.rule: fn(state,player)
+                exit_.access_rule = lambda state, player=self.player, fn=exit_data.rule: fn(state, player)
                 exit_.connect(self.multiworld.get_region(exit_data.name, self.player))
             for loc_data in region_data.locations:
                 loc_ = CaveStoryLocation(self.player, loc_data.name, ALL_LOCATIONS[loc_data.name], region)
                 loc_.access_rule = lambda state, player=self.player, fn=loc_data.rule: fn(state, player)
                 region.locations.append(loc_)
         if self.options.exclude_hell:
-            self.options.exclude_locations.value.update([
-                "Sacred Grounds - B1 - Ledge",
-                "Sacred Grounds - B3 - Hidden Chest"
-            ])
+            self.options.exclude_locations.value.update(
+                ["Sacred Grounds - B1 - Ledge", "Sacred Grounds - B3 - Hidden Chest"]
+            )
 
     def create_items(self) -> None:
         world_itempool: list[Item] = []
@@ -108,10 +133,11 @@ class CaveStoryWorld(World):
         # for _i in range(3):
         #     world_itempool.append(CaveStoryItem(
         #         item_name, item_data.classification, item_data.item_id, self.player))
-        for (item_name, item_data) in ALL_ITEMS.items():
+        for item_name, item_data in ALL_ITEMS.items():
             for _i in range(item_data.cnt):
-                world_itempool.append(CaveStoryItem(
-                    item_name, item_data.classification, item_data.item_id, self.player))
+                world_itempool.append(
+                    CaveStoryItem(item_name, item_data.classification, item_data.item_id, self.player)
+                )
             # Custom handling for making only ONE missile expansion progression so we don't always start with missiles
             # if item_name == "Missile Expansion":
             #     self.multiworld.itempool[-item_data.cnt].classification = ItemClassification.progression
@@ -122,8 +148,7 @@ class CaveStoryWorld(World):
                 "Machine Gun",
                 "Nemesis",
                 "Progressive Polar Star",
-                "Bubbler"
-                "Missile Expansion",
+                "BubblerMissile Expansion",
             ]
             initial_state = CollectionState(self.multiworld)
             sphere_1_locs = self.multiworld.get_reachable_locations(initial_state, self.player)
@@ -133,14 +158,15 @@ class CaveStoryWorld(World):
             start_loc.place_locked_item(start_weapon)
         self.multiworld.itempool.extend(world_itempool)
 
-    def set_rules(self) -> None:        
+    def set_rules(self) -> None:
         goals = [
             "Bad Ending",
             "Normal Ending",
             "Best Ending",
         ]
-        self.multiworld.completion_condition[self.player] = lambda state, player=self.player, goal=self.options.goal: state.has(
-            goals[goal], player)
+        self.multiworld.completion_condition[self.player] = (
+            lambda state, player=self.player, goal=self.options.goal: state.has(goals[goal], player)
+        )
 
     def generate_basic(self) -> None:
         pass
@@ -148,13 +174,12 @@ class CaveStoryWorld(World):
     # Unorder methods:
 
     def fill_slot_data(self) -> Mapping[str, Any]:
-        slot_data = {
-            'goal' : int(self.options.goal),
-            'start': int(self.options.starting_location),
-            'deathlink' : bool(self.options.deathlink),
-            'no_blocks': bool(self.options.no_blocks),
+        return {
+            "goal": int(self.options.goal),
+            "start": int(self.options.starting_location),
+            "deathlink": bool(self.options.deathlink),
+            "no_blocks": bool(self.options.no_blocks),
         }
-        return slot_data
 
     def create_item(self, item: str):
         if item in FILLER_ITEMS.keys():
@@ -162,6 +187,6 @@ class CaveStoryWorld(World):
         else:
             item_data = ALL_ITEMS[item]
         return CaveStoryItem(item, item_data.classification, item_data.item_id, self.player)
-    
+
     def get_filler_item_name(self) -> str:
         return FILLER_ITEMS.keys()[0]
