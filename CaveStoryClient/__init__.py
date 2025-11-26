@@ -1,19 +1,5 @@
 import asyncio
 import json
-import uuid
-from ast import Mod
-from enum import Enum
-from modulefinder import Module
-from pathlib import Path
-from typing import Tuple
-
-tracker_loaded = False
-try:
-    from worlds.tracker.TrackerClient import TrackerGameContext as SuperContext
-
-    tracker_loaded = True
-except ModuleNotFoundError:
-    from CommonClient import CommonContext as SuperContext
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
@@ -24,6 +10,14 @@ from .Constants import *
 from .Enums import CSPacket, CSTrackerAutoTab, CSTrackerEvent
 from .Patcher import *
 from .Protocol import *
+
+tracker_loaded = False
+try:
+    from worlds.tracker.TrackerClient import TrackerGameContext as SuperContext
+
+    tracker_loaded = True
+except ModuleNotFoundError:
+    from CommonClient import CommonContext as SuperContext
 
 
 class CaveStoryClientCommandProcessor(ClientCommandProcessor):
@@ -52,7 +46,7 @@ class CaveStoryContext(SuperContext):
 
     def __init__(self, args):
         super().__init__(args.connect, args.password)
-        self.cs_streams: Tuple = None
+        self.cs_streams: tuple = None
         self.send_lock: asyncio.Lock = asyncio.Lock()
         self.sync_lock: asyncio.Lock = asyncio.Lock()
         self.locations_vec = [False] * LOCATIONS_NUM

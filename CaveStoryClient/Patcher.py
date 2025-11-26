@@ -6,7 +6,6 @@ import shutil
 import struct
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Optional
 
 from .. import CaveStoryWorld
 from .Constants import AP_SPRITE, LOC_TSC_EVENTS
