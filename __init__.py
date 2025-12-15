@@ -25,11 +25,6 @@ def map_page_index(data: Any) -> int:
     return 0
 
 
-def interpret_slot_data(self, slot_data: dict[str, Any]) -> None:
-    if "start" in slot_data:
-        self.origin_region_name = START_LOCATIONS[slot_data["start"]]
-
-
 components.append(
     Component(
         display_name="Cave Story Client",
@@ -180,6 +175,11 @@ class CaveStoryWorld(World):
             "deathlink": bool(self.options.deathlink),
             "no_blocks": bool(self.options.no_blocks),
         }
+
+    def interpret_slot_data(self, slot_data: dict[str, Any]) -> None:
+        if "start" in slot_data:
+            # raise Exception(f"{slot_data['start']} as {type(slot_data['start'])} to {START_LOCATIONS[slot_data['start']]}")
+            self.origin_region_name = START_LOCATIONS[slot_data["start"]]
 
     def create_item(self, item: str):
         if item in FILLER_ITEMS.keys():
