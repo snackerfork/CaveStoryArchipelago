@@ -314,10 +314,10 @@ async def main(args):
         await ctx.shutdown()
 
 
-def launch():
+def launch(*new_args: str):
     parser = get_base_parser(description="Cave Story Client, for text interfacing.")
     parser.add_argument("--rcon-port", default="5451", type=int, help="Port to use to communicate with CaveStory")
-    args, rest = parser.parse_known_args()
+    args, rest = parser.parse_known_args(new_args)
 
     Utils.init_logging("CaveStoryClient", exception_logger="Client")
     import colorama

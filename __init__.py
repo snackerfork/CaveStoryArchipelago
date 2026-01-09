@@ -3,7 +3,8 @@ from typing import Any, ClassVar, Mapping
 from BaseClasses import CollectionState, Item, Region, Tutorial
 from settings import FolderPath, Group
 from worlds.AutoWorld import WebWorld, World
-from worlds.LauncherComponents import Component, Type, components, icon_paths, launch_subprocess
+from worlds.LauncherComponents import Component, Type, components, icon_paths
+from worlds.LauncherComponents import launch as launch_component
 
 from .Items import ALL_ITEMS, FILLER_ITEMS, CaveStoryItem
 from .Locations import ALL_LOCATIONS, START_LOCATIONS, CaveStoryLocation
@@ -13,10 +14,10 @@ from .RegionsRules import REGIONS, RegionData, RuleData, trivial
 base_id = 0xD00_000
 
 
-def launch_client():
+def launch_client(*args: str):
     from .CaveStoryClient import launch
 
-    launch_subprocess(launch, name="CaveStoryClient")
+    launch_component(launch, name="CaveStoryClient", args=args)
 
 
 def map_page_index(data: Any) -> int:
