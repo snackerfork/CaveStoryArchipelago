@@ -144,14 +144,16 @@ class CaveStoryWorld(World):
                 "Machine Gun",
                 "Nemesis",
                 "Progressive Polar Star",
-                "BubblerMissile Expansion",
+                "Bubbler",
+                "Missile Expansion",
             ]
             initial_state = CollectionState(self.multiworld)
             sphere_1_locs = self.multiworld.get_reachable_locations(initial_state, self.player)
             start_loc = self.random.choice(sphere_1_locs)
-            start_weapon = self.random.choice([item for item in world_itempool if item.name in block_breaking_weapons])
-            world_itempool.remove(start_weapon)
-            start_loc.place_locked_item(start_weapon)
+            start_weapon_name = self.random.choice(block_breaking_weapons)
+            start_weapon_index = self.random.choice([index for index, item in list(enumerate(world_itempool)) if item.name == start_weapon_name])
+            start_weapon_item = world_itempool.pop(start_weapon_index)
+            start_loc.place_locked_item(start_weapon_item)
         self.multiworld.itempool.extend(world_itempool)
 
     def set_rules(self) -> None:
