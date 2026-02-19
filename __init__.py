@@ -151,9 +151,10 @@ class CaveStoryWorld(World):
                 "Bubbler",
                 "Missile Expansion",
             ]
-            initial_state = CollectionState(self.multiworld)
-            sphere_1_locs = self.multiworld.get_reachable_locations(initial_state, self.player)
-            start_loc = self.random.choice(sphere_1_locs)
+        initial_state = CollectionState(self.multiworld)
+        sphere_1_locs = self.multiworld.get_reachable_locations(initial_state, self.player)
+        start_loc = self.random.choice(sphere_1_locs)
+        if self.options.early_weapon in ("good_weapons", "annoying"):
             start_weapon_name = self.random.choice(block_breaking_weapons)
             start_weapon_index = self.random.choice([index for index, item in list(enumerate(world_itempool)) if item.name == start_weapon_name])
             start_weapon_item = world_itempool.pop(start_weapon_index)
